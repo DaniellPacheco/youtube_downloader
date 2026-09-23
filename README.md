@@ -1,0 +1,141 @@
+# Downloader e Cortador de YouTube
+
+Uma aplicação web local para baixar vídeos autorizados do YouTube, criar cortes precisos e extrair áudio — sem enviar os seus arquivos para um servidor externo.
+
+O projeto reúne `yt-dlp`, FFmpeg e FastAPI em uma interface simples: cole a URL, escolha o formato e acompanhe a tarefa até o arquivo final estar pronto.
+
+> Use somente conteúdo que você tenha permissão para baixar e processar. O projeto não contorna DRM, login, conteúdo privado ou outras restrições de acesso.
+
+## Para quem é
+
+É especialmente útil para:
+
+- Criadores que precisam separar trechos de entrevistas, podcasts, aulas ou lives gravadas.
+- Editores que querem salvar um vídeo-fonte uma vez e produzir diversos cortes depois.
+- Pessoas que precisam apenas do áudio de um vídeo, em M4A ou MP3.
+- Quem prefere um fluxo local, com arquivos e biblioteca mantidos no próprio computador.
+
+## O que ele faz
+
+- Analisa uma URL de vídeo individual do YouTube e mostra título, duração, thumbnail e resoluções disponíveis.
+- Baixa vídeos completos em MP4, combinando vídeo e áudio automaticamente quando o YouTube os fornece em streams separados.
+- Cria cortes com início e fim exatos.
+- Extrai áudio em M4A por padrão ou converte para MP3.
+- Mantém uma biblioteca de fontes e resultados para reutilizar o vídeo baixado em novos cortes.
+- Processa uma tarefa por vez, exibindo status e progresso no navegador.
+- Remove arquivos temporários e deixa fontes/resultados sob controle manual.
+
+## Como funciona
+
+```text
+URL do YouTube
+       │
+       ▼
+yt-dlp obtém metadados e baixa a fonte
+       │
+       ▼
+FFmpeg junta streams, recorta ou extrai áudio
+       │
+       ▼
+Biblioteca local → arquivo pronto para baixar
+```
+
+Quando possível, o FFmpeg apenas remuxa os streams para preservar qualidade e terminar rápido. Cortes precisos exigem recodificação; nesses casos, o projeto usa automaticamente a GPU NVIDIA via `h264_nvenc` quando disponível. Se não houver suporte ou o NVENC falhar, ele continua na CPU com `libx264`.
+
+## Requisitos
+
+- Windows, macOS ou Linux com Python 3.11+.
+- [FFmpeg](https://ffmpeg.org/) e FFprobe disponíveis no `PATH`.
+- Acesso à internet para analisar e baixar conteúdo autorizado.
+
+Para aceleração por GPU, é necessário uma GPU NVIDIA com driver atualizado e uma compilação do FFmpeg que ofereça `h264_nvenc`.
+
+### FFmpeg no Windows
+
+Uma opção prática é instalar pelo WinGet:
+
+```powershell
+winget install --id Gyan.FFmpeg --exact
+```
+
+Feche e reabra o terminal após a instalação e confirme:
+
+```powershell
+ffmpeg -version
+ffprobe -version
+```
+
+## Instalação
+
+Clone o repositório e crie um ambiente virtual:
+
+```powershell
+git clone <URL-DO-REPOSITORIO>
+cd youtube_downloader
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -e ".[test]"
+```
+
+No macOS/Linux, a ativação é:
+
+```bash
+source .venv/bin/activate
+```
+
+## Executando
+
+```powershell
+uvicorn app.main:app --reload
+```
+
+Abra [http://127.0.0.1:8000](http://127.0.0.1:8000) no navegador.
+
+Na primeira tela:
+
+1. Cole a URL e selecione **Analisar**.
+2. Escolha entre vídeo completo, corte ou somente áudio.
+3. Para cortes, informe início e fim em segundos, `MM:SS` ou `HH:MM:SS`.
+4. Adicione à fila e acompanhe o progresso.
+5. Baixe o resultado ou reutilize a fonte pela biblioteca.
+
+Os dados são gravados em `data/` por padrão. Para usar outro local, defina `YTD_APP_DATA_DIR` antes de iniciar o servidor:
+
+```powershell
+$env:YTD_APP_DATA_DIR = 'D:\Midias\youtube-downloader'
+uvicorn app.main:app --reload
+```
+
+## Qualidade, desempenho e GPU
+
+- Para vídeo completo, o aplicativo prioriza cópia direta de streams compatíveis; isso evita recodificação desnecessária.
+- Para cortes precisos, o vídeo é recodificado para garantir os tempos solicitados.
+- Com NVIDIA NVENC, cortes e conversões usam a GPU automaticamente e a interface mostra o progresso do FFmpeg.
+- A codificação por GPU tende a ser muito mais rápida, mas pode gerar arquivos maiores que uma codificação equivalente por CPU. O equilíbrio entre velocidade, qualidade e tamanho pode variar conforme o vídeo.
+
+## Testes
+
+```powershell
+pytest
+```
+
+Os testes cobrem validação de URLs e tempos, API, persistência, fila, progresso do FFmpeg, seleção de NVENC e fallback para CPU. Eles não acessam o YouTube nem baixam conteúdo real.
+
+## Limites atuais
+
+- Uso local e para uma pessoa por vez.
+- Vídeos individuais do YouTube; playlists, canais e lives em andamento não fazem parte do MVP.
+- Sem autenticação, cookies de login, downloads em lote ou publicação em redes sociais.
+- IA para transcrição, sugestões de cortes, legendas e conversão vertical são evoluções futuras.
+
+## Stack
+
+- **Backend:** Python e FastAPI
+- **Downloads:** yt-dlp
+- **Mídia:** FFmpeg e FFprobe
+- **Persistência:** SQLite
+- **Interface:** HTML, CSS e JavaScript
+
+## Licença e responsabilidade
+
+Antes de usar, verifique os direitos autorais, as licenças e os termos aplicáveis ao conteúdo. Você é responsável pelo uso dos arquivos gerados por esta ferramenta.

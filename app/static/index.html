@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Clipper local</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header><div><span class="eyebrow">FERRAMENTA LOCAL</span><h1>Baixe. Corte.<br><em>Pronto.</em></h1></div><p>Vídeos e áudios processados no seu computador, com qualidade e controle.</p></header>
+  <main>
+    <section class="card workspace">
+      <div class="step"><b>01</b><span>Encontrar vídeo</span></div>
+      <form id="analyze-form" class="url-row"><input id="url" type="url" placeholder="Cole a URL do YouTube" required><button>Analisar</button></form>
+      <div id="notice" class="notice hidden"></div>
+      <div id="video" class="video hidden"><img id="thumb" alt="Thumbnail"><div><h2 id="title"></h2><p id="duration"></p></div></div>
+      <form id="job-form" class="hidden">
+        <div class="step"><b>02</b><span>Configurar saída</span></div>
+        <div class="modes">
+          <label><input type="radio" name="kind" value="video" checked><span>Vídeo completo</span></label>
+          <label><input type="radio" name="kind" value="clip"><span>Recortar trecho</span></label>
+          <label><input type="radio" name="kind" value="audio"><span>Somente áudio</span></label>
+        </div>
+        <div class="options">
+          <label id="quality-label">Qualidade<select id="quality"></select></label>
+          <div id="clip-options" class="clip-options hidden"><label>Início<input id="start" placeholder="00:00"></label><label>Fim<input id="end" placeholder="01:30"></label></div>
+          <label id="audio-label" class="hidden">Formato<select id="audio-format"><option value="m4a">M4A (recomendado)</option><option value="mp3">MP3</option></select></label>
+        </div>
+        <button class="primary">Adicionar à fila</button>
+      </form>
+      <div id="progress" class="progress hidden"><div class="progress-head"><span id="progress-message">Na fila</span><b id="progress-value">0%</b></div><div class="bar"><i id="progress-bar"></i></div><a id="download" class="download hidden">Baixar arquivo</a></div>
+    </section>
+    <section class="library">
+      <div class="section-title"><div class="step"><b>03</b><span>Biblioteca</span></div><button id="refresh" class="ghost">Atualizar</button></div>
+      <p class="muted">Fontes podem ser reutilizadas para criar novos cortes sem outro download.</p>
+      <div id="library-list" class="library-list"></div>
+    </section>
+  </main>
+  <footer>Use somente conteúdo que você tenha autorização para baixar. Conteúdo privado, DRM, playlists e lives em andamento não são suportados.</footer>
+  <script src="/app.js"></script>
+</body>
+</html>
