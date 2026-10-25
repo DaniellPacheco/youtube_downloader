@@ -50,6 +50,8 @@ class JobWorker:
             self.update(job_id, "analyzing", 2, "Preparando processamento")
             source_path = Path(source["path"]) if source.get("path") else None
             if not source_path or not source_path.exists():
+                if source["source_type"] == "local":
+                    raise RuntimeError("Arquivo local não encontrado. Selecione o arquivo novamente.")
                 usage = shutil.disk_usage(self.settings.base_dir)
                 if usage.free < self.settings.min_free_bytes:
                     raise RuntimeError("Espaço livre insuficiente para iniciar o download.")

@@ -81,3 +81,16 @@ def test_full_audio_keeps_original_duration(tmp_path):
     command, total, _ = run.call_args.args
     assert "-ss" not in command and "-t" not in command
     assert total == 120
+
+
+@pytest.mark.parametrize("metadata", [
+    {"streams": [], "format": {"duration": "10"}},
+    {"streams": [{"codec_type": "audio"}], "format": {"duration": "nan"}},
+    {"streams": [{"codec_type": "audio"}], "format": {"duration": "0"}},
+])
+def test_audio_metadata_rejects_missing_audio_or_invalid_duration(tmp_path, metadata):
+    import json
+
+    with patch("app.services.media.subprocess.run", return_value=SimpleNamespace(stdout=json.dumps(metadata))):
+        with pytest.raises(ValueError, match="faixa de áudio"):
+            media.audio_metadata(tmp_path / "invalid.mp4")

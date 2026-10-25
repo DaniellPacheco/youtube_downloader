@@ -9,6 +9,7 @@ from pathlib import Path
 class Settings:
     base_dir: Path
     min_free_bytes: int = 512 * 1024 * 1024
+    max_upload_bytes: int = 512 * 1024 * 1024
 
     @property
     def db_path(self) -> Path:
@@ -34,5 +35,6 @@ class Settings:
 def load_settings() -> Settings:
     root = Path(os.getenv("YTD_APP_DATA_DIR", Path.cwd() / "data")).resolve()
     minimum = int(os.getenv("YTD_MIN_FREE_BYTES", str(512 * 1024 * 1024)))
-    return Settings(root, minimum)
+    maximum = int(os.getenv("YTD_MAX_UPLOAD_BYTES", str(512 * 1024 * 1024)))
+    return Settings(root, minimum, maximum)
 

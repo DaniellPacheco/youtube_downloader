@@ -10,13 +10,21 @@
   <header><div><span class="eyebrow">FERRAMENTA LOCAL</span><h1>Baixe. Corte.<br><em>Pronto.</em></h1></div><p>Vídeos e áudios processados no seu computador, com qualidade e controle.</p></header>
   <main>
     <section class="card workspace">
-      <div class="step"><b>01</b><span>Encontrar vídeo</span></div>
+      <div class="step"><b>01</b><span>Escolher origem</span></div>
+      <div class="source-tabs" aria-label="Origem do arquivo">
+        <button id="source-youtube" type="button" aria-pressed="true">YouTube</button>
+        <button id="source-local" type="button" aria-pressed="false">Arquivo do computador</button>
+      </div>
       <form id="analyze-form" class="url-row"><input id="url" type="url" placeholder="Cole a URL do YouTube" required><button>Analisar</button></form>
+      <form id="upload-form" class="hidden">
+        <p class="muted">Selecione um áudio do WhatsApp ou outro arquivo já salvo no computador. Também é possível extrair o áudio de um MP4.</p>
+        <div class="url-row"><input id="local-file" type="file" aria-label="Selecionar áudio ou vídeo do computador" accept=".ogg,.opus,.mp4,.m4a,.mp3,.wav,.aac,.flac,.webm,.amr,.3gp,.aiff,.aif,.wma" required><button id="upload-button">Usar arquivo</button></div>
+      </form>
       <div id="notice" class="notice hidden"></div>
       <div id="video" class="video hidden"><img id="thumb" alt="Thumbnail"><div><h2 id="title"></h2><p id="duration"></p></div></div>
       <form id="job-form" class="hidden">
         <div class="step"><b>02</b><span>Configurar saída</span></div>
-        <div class="modes">
+        <div id="output-modes" class="modes">
           <label><input type="radio" name="kind" value="video" checked><span>Vídeo completo</span></label>
           <label><input type="radio" name="kind" value="clip"><span>Recortar vídeo</span></label>
           <label><input type="radio" name="kind" value="audio"><span>Somente áudio</span></label>

@@ -3,9 +3,10 @@ from __future__ import annotations
 import shutil
 import uuid
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -17,10 +18,11 @@ from app.utils import ValidationError, canonical_url, extract_video_id, parse_ti
 from app.worker import JobWorker
 
 ACTIVE = ("queued", "analyzing", "downloading", "processing")
+LOCAL_EXTENSIONS = {".ogg", ".opus", ".mp4", ".m4a", ".mp3", ".wav", ".aac", ".flac", ".webm", ".amr", ".3gp", ".aiff", ".aif", ".wma"}
 
 
 def create_app(data_dir: Path | None = None) -> FastAPI:
-    settings = load_settings() if data_dir is None else load_settings().__class__(data_dir.resolve())
+    settings = load_settings() if data_dir is None else replace(load_settings(), base_dir=data_dir.resolve())
     settings.ensure_dirs()
     db = Database(settings.db_path)
     worker = JobWorker(db, settings)
@@ -61,6 +63,47 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         )
         return info
 
+    @app.post("/api/sources/upload", status_code=201)
+    def upload_source(file: UploadFile = File(...)):
+        original = Path((file.filename or "").replace("\\", "/")).name
+        extension = Path(original).suffix.lower()
+        if extension not in LOCAL_EXTENSIONS:
+            raise HTTPException(422, detail={"message": "Formato não suportado. Selecione um áudio ou vídeo compatível, como OGG, Opus, MP4, M4A, MP3 ou WAV."})
+        if not media.dependency_status()["ffprobe"]:
+            raise HTTPException(503, detail={"message": "FFprobe não encontrado. Instale o FFmpeg e reinicie o aplicativo."})
+        if file.size is not None and file.size > settings.max_upload_bytes:
+            raise HTTPException(413, detail={"message": "O arquivo ultrapassa o limite de tamanho permitido."})
+        if shutil.disk_usage(settings.base_dir).free < settings.min_free_bytes + (file.size or 0):
+            raise HTTPException(507, detail={"message": "Espaço livre insuficiente para importar o arquivo."})
+        source_id = f"local-{uuid.uuid4().hex}"
+        target = settings.sources_dir / f"{source_id}{extension}"
+        try:
+            size = 0
+            with target.open("wb") as output:
+                while chunk := file.file.read(1024 * 1024):
+                    size += len(chunk)
+                    if size > settings.max_upload_bytes:
+                        raise HTTPException(413, detail={"message": "O arquivo ultrapassa o limite de tamanho permitido."})
+                    output.write(chunk)
+            if size == 0:
+                raise ValueError("O arquivo está vazio. Selecione um áudio válido.")
+            info = media.audio_metadata(target)
+            title = Path(original).stem[:200] or "Áudio local"
+            db.execute(
+                "INSERT INTO sources(id,url,title,duration,path,status,source_type,created_at) VALUES(?,?,?,?,?,'ready','local',?)",
+                (source_id, f"local:{source_id}", title, info["duration"], str(target), now()),
+            )
+            return {"id": source_id, "title": title, "duration": info["duration"], "source_type": "local",
+                    "thumbnail": None, "resolutions": []}
+        except ValueError as exc:
+            target.unlink(missing_ok=True)
+            raise HTTPException(422, detail={"message": str(exc)}) from exc
+        except Exception:
+            target.unlink(missing_ok=True)
+            raise
+        finally:
+            file.file.close()
+
     @app.post("/api/jobs", status_code=202)
     def create_job(payload: JobRequest):
         if (payload.remove_music or payload.reduce_noise) and not audio_ai.available():
@@ -79,6 +122,11 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
                     raise HTTPException(422, detail={"code": "analysis_failed", "message": str(exc)[:500]}) from exc
                 db.execute("INSERT INTO sources(id,url,title,duration,thumbnail,status,created_at) VALUES(?,?,?,?,?,'metadata',?)", (info["id"], info["url"], info["title"], info["duration"], info["thumbnail"], now()))
                 source = db.one("SELECT * FROM sources WHERE id=?", (video_id,))
+        if source["source_type"] == "local":
+            if payload.kind != "audio":
+                raise ValidationError("Para arquivos do computador, selecione Somente áudio.")
+            if not source.get("path") or not Path(source["path"]).is_file():
+                raise HTTPException(404, detail={"message": "Arquivo local não encontrado. Selecione o arquivo novamente."})
         start, end = parse_time(payload.start), parse_time(payload.end)
         if payload.kind == "clip" or (payload.kind == "audio" and (payload.start is not None or payload.end is not None)):
             if start is None or end is None or start >= end:

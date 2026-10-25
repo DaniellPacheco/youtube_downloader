@@ -103,6 +103,24 @@ Na primeira tela:
 Para recortar apenas o áudio, selecione **Somente áudio**, marque **Recortar áudio**,
 informe início e fim e escolha M4A ou MP3. Sem marcar essa opção, o áudio completo é extraído.
 
+## Converter um arquivo do computador para MP3
+
+1. Clique em **Arquivo do computador**.
+2. Selecione um áudio já salvo (por exemplo, um áudio do WhatsApp em OGG/Opus) ou um vídeo MP4.
+3. Clique em **Usar arquivo**. O aplicativo verifica a faixa de áudio e seleciona MP3 como saída inicial.
+4. Se quiser, ative o recorte ou os tratamentos por IA. Essas opções começam desmarcadas.
+5. Clique em **Adicionar à fila** e depois em **Baixar arquivo**.
+
+Formatos aceitos: OGG, Opus, MP4, M4A, MP3, WAV, AAC, FLAC, WebM, AMR, 3GP,
+AIFF/AIF e WMA, desde que contenham uma faixa de áudio reconhecida pelo FFmpeg.
+Também é possível escolher M4A como saída.
+
+O usuário obtém o arquivo do WhatsApp por conta própria e seleciona o arquivo
+no computador. O programa não se conecta ao WhatsApp. A importação guarda uma
+cópia em `data/sources/`, que pode ser reutilizada pela biblioteca. Excluir essa
+fonte da biblioteca apaga somente a cópia do aplicativo, preservando o original.
+O limite padrão por arquivo é 512 MiB, configurável por `YTD_MAX_UPLOAD_BYTES`.
+
 ## IA local: remover música e reduzir ruído
 
 Em **Somente áudio**, há duas opções independentes, **desmarcadas por padrão**:

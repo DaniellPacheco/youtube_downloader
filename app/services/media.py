@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import shutil
 import subprocess
 from collections import deque
@@ -9,6 +10,23 @@ from pathlib import Path
 from typing import Callable
 
 ProgressCallback = Callable[[float], None]
+
+
+def audio_metadata(path: Path) -> dict:
+    """Inspect the actual file, including whether it contains an audio stream."""
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "error", "-protocol_whitelist", "file,pipe", "-select_streams", "a:0",
+             "-show_entries", "stream=codec_type:format=duration", "-of", "json", str(path)],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", check=True, timeout=30,
+        )
+        metadata = json.loads(result.stdout)
+        seconds = float(metadata["format"]["duration"])
+        if not metadata.get("streams") or not math.isfinite(seconds) or seconds <= 0:
+            raise ValueError("Arquivo sem áudio ou sem duração válida.")
+        return {"duration": seconds}
+    except (subprocess.SubprocessError, ValueError, KeyError, TypeError) as exc:
+        raise ValueError("Não foi possível ler o áudio. Selecione um arquivo válido com uma faixa de áudio.") from exc
 
 
 def dependency_status() -> dict[str, bool]:

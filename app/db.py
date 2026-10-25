@@ -59,6 +59,9 @@ class Database:
             for name in ("remove_music", "reduce_noise"):
                 if name not in columns:
                     db.execute(f"ALTER TABLE jobs ADD COLUMN {name} INTEGER NOT NULL DEFAULT 0")
+            source_columns = {row["name"] for row in db.execute("PRAGMA table_info(sources)")}
+            if "source_type" not in source_columns:
+                db.execute("ALTER TABLE sources ADD COLUMN source_type TEXT NOT NULL DEFAULT 'youtube'")
             db.execute(
                 "UPDATE jobs SET status='failed', error_code='interrupted', "
                 "error_detail='A aplicação foi encerrada durante o processamento.', updated_at=? "
