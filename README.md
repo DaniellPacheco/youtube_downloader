@@ -1,8 +1,8 @@
-# Downloader e Cortador de YouTube
+# Downloader, Cortador e Conversor de Áudio Local
 
-Uma aplicação web local para baixar vídeos autorizados do YouTube, criar cortes precisos e extrair áudio — sem enviar os seus arquivos para um servidor externo.
+Uma aplicação web local para baixar vídeos autorizados do YouTube, recortar vídeos e áudios, converter arquivos do computador para MP3 e tratar áudio com IA — com processamento no próprio computador.
 
-O projeto reúne `yt-dlp`, FFmpeg e FastAPI em uma interface simples: cole a URL, escolha o formato e acompanhe a tarefa até o arquivo final estar pronto.
+Escolha uma URL do YouTube ou um arquivo já salvo no computador, configure a saída e acompanhe a tarefa até o arquivo final estar pronto. Áudios do WhatsApp podem ser selecionados como qualquer outro arquivo local, depois de baixados pelo próprio usuário.
 
 > Use somente conteúdo que você tenha permissão para baixar e processar. O projeto não contorna DRM, login, conteúdo privado ou outras restrições de acesso.
 
@@ -13,6 +13,8 @@ O projeto reúne `yt-dlp`, FFmpeg e FastAPI em uma interface simples: cole a URL
 - Criadores que precisam separar trechos de entrevistas, podcasts, aulas ou lives gravadas.
 - Editores que querem salvar um vídeo-fonte uma vez e produzir diversos cortes depois.
 - Pessoas que precisam apenas do áudio de um vídeo, em M4A ou MP3.
+- Quem quer converter mensagens de voz do WhatsApp em OGG/Opus para MP3.
+- Quem precisa reduzir música ou ruídos de fundo em uma gravação com IA local.
 - Quem prefere um fluxo local, com arquivos e biblioteca mantidos no próprio computador.
 
 ## O que ele faz
@@ -22,24 +24,34 @@ O projeto reúne `yt-dlp`, FFmpeg e FastAPI em uma interface simples: cole a URL
 - Cria cortes com início e fim exatos.
 - Extrai áudio em M4A por padrão ou converte para MP3.
 - Recorta um trecho do áudio em M4A ou MP3, com início e fim definidos.
-- Mantém uma biblioteca de fontes e resultados para reutilizar o vídeo baixado em novos cortes.
+- Importa áudios do computador e extrai o áudio de arquivos MP4, com MP3 como saída inicial.
+- Aceita arquivos OGG/Opus do WhatsApp já baixados pelo usuário.
+- Oferece remoção de música e redução de ruídos por IA, em opções independentes e desmarcadas por padrão.
+- Prefere uma GPU compatível para a IA e tenta novamente na CPU em caso de falha de execução na GPU.
+- Mantém uma biblioteca de fontes e resultados para reutilizar vídeos baixados e arquivos importados.
 - Processa uma tarefa por vez, exibindo status e progresso no navegador.
 - Remove arquivos temporários e deixa fontes/resultados sob controle manual.
 
 ## Como funciona
 
 ```text
-URL do YouTube
-       │
-       ▼
-yt-dlp obtém metadados e baixa a fonte
-       │
-       ▼
-FFmpeg junta streams, recorta ou extrai áudio
-       │
-       ▼
-Biblioteca local → arquivo pronto para baixar
+YouTube → yt-dlp baixa a fonte ──────────────┐
+                                           ▼
+Arquivo do computador → validação → biblioteca de fontes
+                                           │
+                                           ▼
+                         FFmpeg extrai áudio ou recorta
+                                           │
+                                           ▼
+                         IA local, somente se selecionada
+                         (remover música / reduzir ruído)
+                                           │
+                                           ▼
+                         Resultado em MP4, M4A ou MP3
 ```
+
+Arquivos do computador seguem o fluxo de conversão de áudio. A IA está disponível
+nas saídas de áudio, tanto para uma fonte do YouTube quanto para um arquivo importado.
 
 Quando possível, o FFmpeg apenas remuxa os streams para preservar qualidade e terminar rápido. Cortes precisos exigem recodificação; nesses casos, o projeto usa automaticamente a GPU NVIDIA via `h264_nvenc` quando disponível. Se não houver suporte ou o NVENC falhar, ele continua na CPU com `libx264`.
 
@@ -47,9 +59,10 @@ Quando possível, o FFmpeg apenas remuxa os streams para preservar qualidade e t
 
 - Windows, macOS ou Linux com Python 3.11+.
 - [FFmpeg](https://ffmpeg.org/) e FFprobe disponíveis no `PATH`.
-- Acesso à internet para analisar e baixar conteúdo autorizado.
+- Acesso à internet para analisar e baixar conteúdo do YouTube e, no primeiro uso da IA, baixar os modelos.
+- Dependências opcionais de IA apenas se quiser remover música ou reduzir ruído.
 
-Para aceleração por GPU, é necessário uma GPU NVIDIA com driver atualizado e uma compilação do FFmpeg que ofereça `h264_nvenc`.
+Para acelerar a recodificação de vídeo, é necessário uma GPU NVIDIA com driver atualizado e uma compilação do FFmpeg que ofereça `h264_nvenc`. A aceleração da IA usa bibliotecas próprias, descritas na seção **IA local**. A conversão comum de áudio para MP3 usa a CPU e não exige IA.
 
 ### FFmpeg no Windows
 
@@ -73,28 +86,35 @@ Clone o repositório e crie um ambiente virtual:
 ```powershell
 git clone <URL-DO-REPOSITORIO>
 cd youtube_downloader
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -e ".[test]"
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[test]"
 ```
 
-No macOS/Linux, a ativação é:
+Os comandos acima são para Windows e dispensam a ativação do ambiente virtual.
+Se `py` não for encontrado, instale Python 3.11+ e reabra o terminal antes de continuar.
+As dependências de IA são instaladas separadamente, conforme a seção abaixo.
+
+No macOS/Linux, depois de clonar e entrar na pasta do projeto:
 
 ```bash
+python3 -m venv .venv
 source .venv/bin/activate
+pip install -e ".[test]"
 ```
 
 ## Executando
 
 ```powershell
-uvicorn app.main:app --reload
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
 Abra [http://127.0.0.1:8000](http://127.0.0.1:8000) no navegador.
 
-Na primeira tela:
+No macOS/Linux, com o ambiente ativado, use `uvicorn app.main:app --reload`.
 
-1. Cole a URL e selecione **Analisar**.
+Para usar o YouTube:
+
+1. Selecione **YouTube**, cole a URL e clique em **Analisar**.
 2. Escolha entre vídeo completo, corte ou somente áudio.
 3. Para cortes, informe início e fim em segundos, `MM:SS` ou `HH:MM:SS`.
 4. Adicione à fila e acompanhe o progresso.
@@ -176,27 +196,57 @@ e [instalação do PyTorch com CUDA](https://pytorch.org/get-started/previous-ve
 Os modelos de separação são do projeto [Ultimate Vocal Remover](https://github.com/Anjok07/ultimatevocalremovergui),
 desenvolvidos por Anjok07 e colaboradores; o modelo de redução de ruído é de FoxJoy.
 
-Os dados são gravados em `data/` por padrão. Para usar outro local, defina `YTD_APP_DATA_DIR` antes de iniciar o servidor:
+## Biblioteca e armazenamento
+
+A biblioteca reúne as fontes e os arquivos gerados. Em fontes do YouTube, use
+**Novo corte**; em arquivos importados, use **Converter áudio** para configurar uma
+nova saída. O recorte e os tratamentos por IA começam desmarcados ao selecionar
+uma fonte do computador. Exclua os resultados de uma fonte antes de excluir a fonte.
+
+Os dados são gravados em `data/` por padrão:
+
+| Local | Conteúdo |
+|---|---|
+| `data/sources/` | Fontes baixadas e cópias dos arquivos importados |
+| `data/results/` | Arquivos finais para baixar |
+| `data/models/` | Modelos e metadados da IA em cache |
+| `data/temp/` | Arquivos intermediários, removidos após o processamento |
+| `data/app.db` | Biblioteca e histórico das tarefas |
+
+Para usar outro local, defina `YTD_APP_DATA_DIR` antes de iniciar o servidor:
 
 ```powershell
 $env:YTD_APP_DATA_DIR = 'D:\Midias\youtube-downloader'
-uvicorn app.main:app --reload
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
+
+Outras configurações opcionais são informadas em bytes:
+
+| Variável | Padrão | Finalidade |
+|---|---|---|
+| `YTD_MAX_UPLOAD_BYTES` | `536870912` (512 MiB) | Tamanho máximo de cada arquivo importado |
+| `YTD_MIN_FREE_BYTES` | `536870912` (512 MiB) | Reserva mínima de espaço livre verificada antes de importar ou iniciar um download |
 
 ## Qualidade, desempenho e GPU
 
 - Para vídeo completo, o aplicativo prioriza cópia direta de streams compatíveis; isso evita recodificação desnecessária.
 - Para cortes precisos, o vídeo é recodificado para garantir os tempos solicitados.
-- Com NVIDIA NVENC, cortes e conversões usam a GPU automaticamente e a interface mostra o progresso do FFmpeg.
+- Com NVIDIA NVENC, cortes e recodificações de vídeo usam a GPU automaticamente e a interface mostra o progresso do FFmpeg.
+- A IA prefere a GPU compatível configurada no ambiente; a conversão comum para MP3/M4A usa a CPU.
+- Converter OGG/Opus ou outro formato para MP3 facilita a compatibilidade, mas não recupera qualidade já perdida no arquivo original.
 - A codificação por GPU tende a ser muito mais rápida, mas pode gerar arquivos maiores que uma codificação equivalente por CPU. O equilíbrio entre velocidade, qualidade e tamanho pode variar conforme o vídeo.
 
 ## Testes
 
 ```powershell
-pytest
+.\.venv\Scripts\python.exe -m pytest
 ```
 
-Os testes cobrem validação de URLs e tempos, API, persistência, fila, progresso do FFmpeg, seleção de NVENC e fallback para CPU. Eles não acessam o YouTube nem baixam conteúdo real.
+Os testes cobrem validação de URLs e tempos, importação de arquivos, limites de
+tamanho, preservação dos originais, persistência, fila, progresso, seleção de GPU
+e tentativa na CPU em caso de falha. Com FFmpeg e FFprobe disponíveis, também
+executam conversões reais de Opus, OGG, M4A, WAV e MP4 para MP3 usando arquivos
+sintéticos. Eles não acessam o YouTube nem baixam conteúdo de usuários.
 
 Os testes de IA reais são opcionais e usam um áudio sintético. Para executá-los
 com os modelos locais (com download no primeiro uso):
@@ -212,6 +262,8 @@ Remove-Item Env:YTD_RUN_AI_TESTS
 - Uso local e para uma pessoa por vez.
 - Vídeos individuais do YouTube; playlists, canais e lives em andamento não fazem parte do MVP.
 - Sem autenticação, cookies de login, downloads em lote ou publicação em redes sociais.
+- Arquivos do WhatsApp devem ser baixados pelo usuário e selecionados no computador; não há conexão com a conta do WhatsApp.
+- A importação local oferece saídas de áudio; edição e exportação de vídeos locais não fazem parte desse fluxo.
 - IA para transcrição, sugestões de cortes, legendas e conversão vertical são evoluções futuras.
 
 ## Stack
@@ -219,6 +271,7 @@ Remove-Item Env:YTD_RUN_AI_TESTS
 - **Backend:** Python e FastAPI
 - **Downloads:** yt-dlp
 - **Mídia:** FFmpeg e FFprobe
+- **IA local opcional:** Audio Separator, modelos UVR e PyTorch
 - **Persistência:** SQLite
 - **Interface:** HTML, CSS e JavaScript
 
