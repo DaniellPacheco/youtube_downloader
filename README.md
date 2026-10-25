@@ -21,6 +21,7 @@ O projeto reúne `yt-dlp`, FFmpeg e FastAPI em uma interface simples: cole a URL
 - Baixa vídeos completos em MP4, combinando vídeo e áudio automaticamente quando o YouTube os fornece em streams separados.
 - Cria cortes com início e fim exatos.
 - Extrai áudio em M4A por padrão ou converte para MP3.
+- Recorta um trecho do áudio em M4A ou MP3, com início e fim definidos.
 - Mantém uma biblioteca de fontes e resultados para reutilizar o vídeo baixado em novos cortes.
 - Processa uma tarefa por vez, exibindo status e progresso no navegador.
 - Remove arquivos temporários e deixa fontes/resultados sob controle manual.
@@ -98,6 +99,9 @@ Na primeira tela:
 3. Para cortes, informe início e fim em segundos, `MM:SS` ou `HH:MM:SS`.
 4. Adicione à fila e acompanhe o progresso.
 5. Baixe o resultado ou reutilize a fonte pela biblioteca.
+
+Para recortar apenas o áudio, selecione **Somente áudio**, marque **Recortar áudio**,
+informe início e fim e escolha M4A ou MP3. Sem marcar essa opção, o áudio completo é extraído.
 
 Os dados são gravados em `data/` por padrão. Para usar outro local, defina `YTD_APP_DATA_DIR` antes de iniciar o servidor:
 

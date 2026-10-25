@@ -133,10 +133,16 @@ def precise_clip(source: Path, output: Path, start: float, end: float, resolutio
 
 
 def extract_audio(source: Path, output: Path, audio_format: str, progress: ProgressCallback | None = None,
-                  expected_duration: float | None = None) -> None:
+                  expected_duration: float | None = None, start: float | None = None,
+                  end: float | None = None) -> None:
+    if (start is None) != (end is None) or (start is not None and (start < 0 or start >= end)):
+        raise ValueError("Informe início e fim válidos para o corte de áudio.")
     if audio_format == "mp3":
         codecs = ["-c:a", "libmp3lame", "-q:a", "2"]
     else:
         codecs = ["-c:a", "aac", "-b:a", "192k"]
-    _run_with_progress(["ffmpeg", "-y", "-i", str(source), "-vn", *codecs, str(output)],
-                       expected_duration or duration(source), progress)
+    seek = ["-ss", f"{start:.3f}"] if start is not None else []
+    trim = ["-t", f"{end - start:.3f}"] if start is not None else []
+    total = end - start if start is not None else expected_duration or duration(source)
+    _run_with_progress(["ffmpeg", "-y", *seek, "-i", str(source), *trim, "-vn", *codecs, str(output)],
+                       total, progress)

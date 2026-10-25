@@ -59,3 +59,25 @@ def test_nvenc_codec_uses_quality_vbr():
 
 def test_cpu_codec_preserves_previous_quality():
     assert media._codec_args("libx264") == ["-c:v", "libx264", "-preset", "medium", "-crf", "20"]
+
+
+@pytest.mark.parametrize("audio_format,codec", [("m4a", "aac"), ("mp3", "libmp3lame")])
+def test_audio_clip_uses_selected_interval_and_codec(tmp_path, audio_format, codec):
+    with patch("app.services.media._run_with_progress") as run:
+        media.extract_audio(tmp_path / "source.mp4", tmp_path / f"out.{audio_format}",
+                            audio_format, expected_duration=120, start=10, end=25)
+    command, total, _ = run.call_args.args
+    assert command[command.index("-ss") + 1] == "10.000"
+    assert command.index("-ss") < command.index("-i")
+    assert command[command.index("-t") + 1] == "15.000"
+    assert command[command.index("-c:a") + 1] == codec
+    assert "-vn" in command
+    assert total == 15
+
+
+def test_full_audio_keeps_original_duration(tmp_path):
+    with patch("app.services.media._run_with_progress") as run:
+        media.extract_audio(tmp_path / "source.mp4", tmp_path / "out.m4a", "m4a", expected_duration=120)
+    command, total, _ = run.call_args.args
+    assert "-ss" not in command and "-t" not in command
+    assert total == 120

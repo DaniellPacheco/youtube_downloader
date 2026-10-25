@@ -70,10 +70,12 @@ class JobWorker:
             base = safe_filename(source["title"])
             if job["kind"] == "audio":
                 ext = job["audio_format"]
-                filename = f"{base}-audio.{ext}"
+                suffix = "audio-corte" if job["start_time"] is not None else "audio"
+                filename = f"{base}-{suffix}.{ext}"
                 mime = "audio/mp4" if ext == "m4a" else "audio/mpeg"
                 output = self.settings.results_dir / f"{result_id}.{ext}"
-                media.extract_audio(source_path, output, ext, media_progress, float(source["duration"]))
+                media.extract_audio(source_path, output, ext, media_progress, float(source["duration"]),
+                                    start=job["start_time"], end=job["end_time"])
             else:
                 suffix = "corte" if job["kind"] == "clip" else "video"
                 filename, mime = f"{base}-{suffix}.mp4", "video/mp4"

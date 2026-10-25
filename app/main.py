@@ -78,7 +78,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
                 db.execute("INSERT INTO sources(id,url,title,duration,thumbnail,status,created_at) VALUES(?,?,?,?,?,'metadata',?)", (info["id"], info["url"], info["title"], info["duration"], info["thumbnail"], now()))
                 source = db.one("SELECT * FROM sources WHERE id=?", (video_id,))
         start, end = parse_time(payload.start), parse_time(payload.end)
-        if payload.kind == "clip":
+        if payload.kind == "clip" or (payload.kind == "audio" and (payload.start is not None or payload.end is not None)):
             if start is None or end is None or start >= end:
                 raise ValidationError("O fim precisa ser maior que o início.")
             if end > float(source["duration"]):

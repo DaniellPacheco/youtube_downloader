@@ -1,6 +1,8 @@
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from fastapi.testclient import TestClient
 
 from app.main import create_app
@@ -57,4 +59,32 @@ def test_health_shape(tmp_path):
         response = api.get("/api/health")
         assert response.status_code == 200
         assert set(response.json()["dependencies"]) == {"ffmpeg", "ffprobe"}
+
+
+@pytest.mark.parametrize("times", [
+    {"start": "1:00", "end": "0:30"},
+    {"start": "1:00", "end": "3:00"},
+    {"start": "0:10"},
+    {"end": "0:20"},
+    {"start": "", "end": ""},
+    {"start": -1, "end": 20},
+])
+def test_audio_clip_rejects_invalid_range(tmp_path, times):
+    with patch("app.main.youtube.analyze", return_value=INFO), client(tmp_path) as api:
+        api.post("/api/analyze", json={"url": INFO["url"]})
+        response = api.post("/api/jobs", json={"kind": "audio", "source_id": INFO["id"], **times})
+        assert response.status_code == 422
+
+
+@pytest.mark.parametrize("audio_format", ["m4a", "mp3"])
+@pytest.mark.parametrize("times", [{}, {"start": "00:10", "end": "00:20"}])
+def test_audio_job_accepts_full_audio_and_clip(tmp_path, audio_format, times):
+    with patch("app.main.youtube.analyze", return_value=INFO), patch("app.worker.JobWorker.start"), client(tmp_path) as api:
+        api.post("/api/analyze", json={"url": INFO["url"]})
+        response = api.post("/api/jobs", json={"kind": "audio", "source_id": INFO["id"], "audio_format": audio_format, **times})
+        assert response.status_code == 202
+        job = api.get(f"/api/jobs/{response.json()['id']}").json()
+        assert job["start_time"] == (10 if times else None)
+        assert job["end_time"] == (20 if times else None)
+        assert job["audio_format"] == audio_format
 

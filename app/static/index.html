@@ -18,11 +18,12 @@
         <div class="step"><b>02</b><span>Configurar saída</span></div>
         <div class="modes">
           <label><input type="radio" name="kind" value="video" checked><span>Vídeo completo</span></label>
-          <label><input type="radio" name="kind" value="clip"><span>Recortar trecho</span></label>
+          <label><input type="radio" name="kind" value="clip"><span>Recortar vídeo</span></label>
           <label><input type="radio" name="kind" value="audio"><span>Somente áudio</span></label>
         </div>
         <div class="options">
           <label id="quality-label">Qualidade<select id="quality"></select></label>
+          <label id="audio-clip-label" class="hidden"><span><input id="audio-clip" type="checkbox"> Recortar áudio</span></label>
           <div id="clip-options" class="clip-options hidden"><label>Início<input id="start" placeholder="00:00"></label><label>Fim<input id="end" placeholder="01:30"></label></div>
           <label id="audio-label" class="hidden">Formato<select id="audio-format"><option value="m4a">M4A (recomendado)</option><option value="mp3">MP3</option></select></label>
         </div>
