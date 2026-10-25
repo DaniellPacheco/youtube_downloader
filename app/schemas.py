@@ -17,6 +17,8 @@ class JobRequest(BaseModel):
     start: str | float | int | None = None
     end: str | float | int | None = None
     audio_format: Literal["m4a", "mp3"] = "m4a"
+    remove_music: bool = False
+    reduce_noise: bool = False
 
     @model_validator(mode="after")
     def validate_source(self):
@@ -24,5 +26,7 @@ class JobRequest(BaseModel):
             raise ValueError("Informe exatamente uma URL ou source_id.")
         if self.kind == "clip" and (self.start is None or self.end is None):
             raise ValueError("Início e fim são obrigatórios para cortes.")
+        if self.kind != "audio" and (self.remove_music or self.reduce_noise):
+            raise ValueError("A limpeza por IA está disponível em Somente áudio.")
         return self
 

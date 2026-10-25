@@ -103,6 +103,61 @@ Na primeira tela:
 Para recortar apenas o áudio, selecione **Somente áudio**, marque **Recortar áudio**,
 informe início e fim e escolha M4A ou MP3. Sem marcar essa opção, o áudio completo é extraído.
 
+## IA local: remover música e reduzir ruído
+
+Em **Somente áudio**, há duas opções independentes, **desmarcadas por padrão**:
+
+- **Remover música de fundo:** separa os vocais do acompanhamento com o modelo `3_HP-Vocal-UVR`.
+- **Reduzir ruídos de fundo:** aplica o modelo `UVR-DeNoise` e mantém a faixa sem ruído.
+
+Você pode selecionar uma ou ambas. Quando ambas estão selecionadas, o aplicativo
+remove a música primeiro e reduz o ruído depois. Se houver um corte, somente esse
+trecho passa pela IA. O resultado é convertido para M4A ou MP3 ao final.
+As fontes originais são preservadas.
+
+### Instalação para NVIDIA (Windows, Python 3.11–3.13)
+
+No PowerShell, dentro da pasta do projeto:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128
+.\.venv\Scripts\python.exe -m pip install -e ".[ai-gpu]"
+```
+
+Esse conjunto inclui suporte à geração RTX 50. Confira a GPU detectada:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name() if torch.cuda.is_available() else 'CPU')"
+```
+
+Para CPU ou Apple Silicon, use `pip install -e ".[ai]"` no ambiente virtual.
+Para AMD/Intel no Windows, há a alternativa experimental
+`pip install -e ".[ai-directml]"`, em um ambiente compatível com `torch-directml`
+(a disponibilidade de pacotes depende da versão do Python).
+Escolha apenas um dos extras de IA para evitar instalar variantes conflitantes do ONNX Runtime.
+
+Reinicie o aplicativo após instalar. A IA prefere CUDA/ROCm quando disponível,
+depois Metal ou DirectML, e usa CPU quando não há GPU compatível configurada.
+O suporte à GPU exige as bibliotecas e os drivers correspondentes; apenas ter uma
+placa dedicada não garante que o ambiente Python consiga utilizá-la.
+Se houver falha de execução na GPU, a etapa tenta novamente na CPU e avisa na fila.
+
+No primeiro uso de cada tratamento, o aplicativo baixa o modelo e os metadados
+para `data/models/` (ou `YTD_APP_DATA_DIR/models/`). Os arquivos ficam em cache
+para as próximas execuções. O processamento é local e não envia seu áudio para
+serviços externos. Depois que os modelos e metadados estiverem em cache, o
+tratamento de uma fonte já armazenada pode funcionar sem internet.
+
+A separação pode deixar resíduos e alterar a voz; vocais cantados ao fundo também
+podem ser preservados. A qualidade depende da gravação. A primeira execução pode
+demorar por causa do download e da preparação dos modelos. O progresso da IA
+mostra etapas, sem estimar o tempo restante dentro de cada modelo.
+
+Referências: [Audio Separator](https://github.com/nomadkaraoke/python-audio-separator)
+e [instalação do PyTorch com CUDA](https://pytorch.org/get-started/previous-versions/).
+Os modelos de separação são do projeto [Ultimate Vocal Remover](https://github.com/Anjok07/ultimatevocalremovergui),
+desenvolvidos por Anjok07 e colaboradores; o modelo de redução de ruído é de FoxJoy.
+
 Os dados são gravados em `data/` por padrão. Para usar outro local, defina `YTD_APP_DATA_DIR` antes de iniciar o servidor:
 
 ```powershell
@@ -124,6 +179,15 @@ pytest
 ```
 
 Os testes cobrem validação de URLs e tempos, API, persistência, fila, progresso do FFmpeg, seleção de NVENC e fallback para CPU. Eles não acessam o YouTube nem baixam conteúdo real.
+
+Os testes de IA reais são opcionais e usam um áudio sintético. Para executá-los
+com os modelos locais (com download no primeiro uso):
+
+```powershell
+$env:YTD_RUN_AI_TESTS = '1'
+.\.venv\Scripts\python.exe -m pytest tests/test_audio_ai_integration.py -q
+Remove-Item Env:YTD_RUN_AI_TESTS
+```
 
 ## Limites atuais
 

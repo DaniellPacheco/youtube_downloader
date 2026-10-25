@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import load_settings
 from app.db import Database, now
 from app.schemas import AnalyzeRequest, JobRequest
-from app.services import media, youtube
+from app.services import audio_ai, media, youtube
 from app.utils import ValidationError, canonical_url, extract_video_id, parse_time
 from app.worker import JobWorker
 
@@ -63,6 +63,8 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
     @app.post("/api/jobs", status_code=202)
     def create_job(payload: JobRequest):
+        if (payload.remove_music or payload.reduce_noise) and not audio_ai.available():
+            raise HTTPException(503, detail={"code": "ai_not_installed", "message": audio_ai.INSTALL_MESSAGE})
         if payload.source_id:
             source = db.one("SELECT * FROM sources WHERE id=?", (payload.source_id,))
             if not source:
@@ -85,8 +87,9 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
                 raise ValidationError("O fim ultrapassa a duração do vídeo.")
         job_id, created = uuid.uuid4().hex, now()
         db.execute(
-            "INSERT INTO jobs(id,kind,source_id,status,progress,message,resolution,start_time,end_time,audio_format,created_at,updated_at) VALUES(?,?,?,'queued',0,'Na fila',?,?,?,?,?,?)",
-            (job_id, payload.kind, source["id"], payload.resolution, start, end, payload.audio_format, created, created),
+            "INSERT INTO jobs(id,kind,source_id,status,progress,message,resolution,start_time,end_time,audio_format,remove_music,reduce_noise,created_at,updated_at) VALUES(?,?,?,'queued',0,'Na fila',?,?,?,?,?,?,?,?)",
+            (job_id, payload.kind, source["id"], payload.resolution, start, end, payload.audio_format,
+             int(payload.remove_music), int(payload.reduce_noise), created, created),
         )
         worker.queue.put_nowait(job_id)
         return {"id": job_id, "status": "queued"}

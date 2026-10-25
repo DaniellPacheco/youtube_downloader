@@ -61,6 +61,30 @@ def test_health_shape(tmp_path):
         assert set(response.json()["dependencies"]) == {"ffmpeg", "ffprobe"}
 
 
+def test_ai_requires_optional_dependencies(tmp_path):
+    with patch("app.services.audio_ai.available", return_value=False), client(tmp_path) as api:
+        response = api.post("/api/jobs", json={"kind": "audio", "source_id": INFO["id"], "remove_music": True})
+        assert response.status_code == 503
+        assert response.json()["detail"]["code"] == "ai_not_installed"
+
+
+@pytest.mark.parametrize("options", [{}, {"remove_music": True}, {"reduce_noise": True}, {"remove_music": True, "reduce_noise": True}])
+def test_audio_ai_options_persist_and_default_off(tmp_path, options):
+    with patch("app.services.audio_ai.available", return_value=True), patch("app.main.youtube.analyze", return_value=INFO), patch("app.worker.JobWorker.start"), client(tmp_path) as api:
+        api.post("/api/analyze", json={"url": INFO["url"]})
+        response = api.post("/api/jobs", json={"kind": "audio", "source_id": INFO["id"], **options})
+        assert response.status_code == 202
+        job = api.get(f"/api/jobs/{response.json()['id']}").json()
+        assert bool(job["remove_music"]) == options.get("remove_music", False)
+        assert bool(job["reduce_noise"]) == options.get("reduce_noise", False)
+
+
+def test_video_rejects_audio_ai_options(tmp_path):
+    with client(tmp_path) as api:
+        response = api.post("/api/jobs", json={"kind": "video", "source_id": INFO["id"], "reduce_noise": True})
+        assert response.status_code == 422
+
+
 @pytest.mark.parametrize("times", [
     {"start": "1:00", "end": "0:30"},
     {"start": "1:00", "end": "3:00"},

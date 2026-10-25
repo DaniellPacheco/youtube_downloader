@@ -27,6 +27,12 @@
           <div id="clip-options" class="clip-options hidden"><label>Início<input id="start" placeholder="00:00"></label><label>Fim<input id="end" placeholder="01:30"></label></div>
           <label id="audio-label" class="hidden">Formato<select id="audio-format"><option value="m4a">M4A (recomendado)</option><option value="mp3">MP3</option></select></label>
         </div>
+        <fieldset id="audio-ai-options" class="audio-ai hidden">
+          <legend>Limpeza de áudio com IA local (opcional)</legend>
+          <label><input id="remove-music" type="checkbox"> Remover música de fundo</label>
+          <label><input id="reduce-noise" type="checkbox"> Reduzir ruídos de fundo</label>
+          <p class="muted">Escolha uma ou ambas. A GPU compatível é usada automaticamente; sem suporte, usamos a CPU. Os modelos são baixados no primeiro uso e o áudio é processado no seu computador. A voz pode sofrer alterações.</p>
+        </fieldset>
         <button class="primary">Adicionar à fila</button>
       </form>
       <div id="progress" class="progress hidden"><div class="progress-head"><span id="progress-message">Na fila</span><b id="progress-value">0%</b></div><div class="bar"><i id="progress-bar"></i></div><a id="download" class="download hidden">Baixar arquivo</a></div>

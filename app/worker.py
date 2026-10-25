@@ -7,7 +7,7 @@ from pathlib import Path
 
 from app.config import Settings
 from app.db import Database, now
-from app.services import media, youtube
+from app.services import audio_ai, media, youtube
 from app.utils import canonical_url, safe_filename
 
 
@@ -71,11 +71,21 @@ class JobWorker:
             if job["kind"] == "audio":
                 ext = job["audio_format"]
                 suffix = "audio-corte" if job["start_time"] is not None else "audio"
+                if job["remove_music"] or job["reduce_noise"]:
+                    suffix += "-tratado"
                 filename = f"{base}-{suffix}.{ext}"
                 mime = "audio/mp4" if ext == "m4a" else "audio/mpeg"
                 output = self.settings.results_dir / f"{result_id}.{ext}"
-                media.extract_audio(source_path, output, ext, media_progress, float(source["duration"]),
-                                    start=job["start_time"], end=job["end_time"])
+                if job["remove_music"] or job["reduce_noise"]:
+                    audio_ai.clean_audio(
+                        source_path, output, ext, work / "ai", self.settings.base_dir / "models",
+                        bool(job["remove_music"]), bool(job["reduce_noise"]), float(source["duration"]),
+                        start=job["start_time"], end=job["end_time"],
+                        status=lambda pct, message: self.update(job_id, "processing", 75 + pct * .24, message),
+                    )
+                else:
+                    media.extract_audio(source_path, output, ext, media_progress, float(source["duration"]),
+                                        start=job["start_time"], end=job["end_time"])
             else:
                 suffix = "corte" if job["kind"] == "clip" else "video"
                 filename, mime = f"{base}-{suffix}.mp4", "video/mp4"

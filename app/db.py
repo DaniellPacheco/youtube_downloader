@@ -55,6 +55,10 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
                 CREATE INDEX IF NOT EXISTS idx_results_source ON results(source_id);
             """)
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(jobs)")}
+            for name in ("remove_music", "reduce_noise"):
+                if name not in columns:
+                    db.execute(f"ALTER TABLE jobs ADD COLUMN {name} INTEGER NOT NULL DEFAULT 0")
             db.execute(
                 "UPDATE jobs SET status='failed', error_code='interrupted', "
                 "error_detail='A aplicação foi encerrada durante o processamento.', updated_at=? "
